@@ -1,0 +1,6 @@
+Episode: 0, Score: -278.86567979650135 
+Episode: 1, Score: -132.20343927434715 
+Episode: 2, Score: -140.69327467694387 
+Episode: 3, Score: -117.08798708231673 
+Episode: 4, Score: -149.88591525795096 
+Episode: 5, Score: -263.8672957029235 

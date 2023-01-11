@@ -139,6 +139,11 @@ def train_ddqn(args, env: Env, params: dict) -> (list, int):
         _loss.append(score)
         agent.update_target_from_model()  # Update the weights after each episode
 
+        scorefile = open(args.result_save_path + "/scores.txt", "a+")
+        scorefile.write(f"Episode: {e}, Score: {score} \n")
+        scorefile.flush()
+        scorefile.close()
+
         # Average score of last 100 episode
         is_solved = np.mean(_loss[-100:])
         if is_solved > 200:
@@ -147,12 +152,7 @@ def train_ddqn(args, env: Env, params: dict) -> (list, int):
         print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
 
         # Checkpoint for models
-        if e + 1 % 50 == 0:
-            scorefile = open(args.result_save_path + "/scores.txt", "a+")
-            scorefile.write(f"Episode: {e}, Score: {score} \n")
-            scorefile.flush()
-            scorefile.close()
-
+        if (e + 1) % 50 == 0:
             agent.model.save(args.model_save_path + "/model%09d" % e + '.h5')
             print(f"Saved model at episode {e + 1}.")
 
