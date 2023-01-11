@@ -32,9 +32,8 @@ class DDQN:
         self.iteration = 0
         self.model_save_path = args.model_save_path
         self.result_save_path = args.result_save_path
-        self.video_save_path = args.video_save_path
-        self.model = self.build_model()
-        self.model_target = self.build_model()  # Second (target) neural network
+        self.model = self.load_model()
+        self.model_target = self.load_model()  # Second (target) neural network
         self.update_target_from_model()  # Update weights
 
     def load_model(self):
@@ -43,7 +42,7 @@ class DDQN:
         modelfiles.sort()
         if len(modelfiles) >= 1:
             model = tf.keras.models.load_model(modelfiles[-1])
-            self.iteration = int(modelfiles[-1].split("/")[3].replace(".h5", "").replace("model", "")) + 1
+            self.iteration = int(modelfiles[-1].split("/")[-1].replace(".h5", "").replace("model", "")) + 1
             print(f"Model loaded from previous state at episode {self.iteration}.")
         return model
 
@@ -68,7 +67,7 @@ class DDQN:
         act_values = self.model.predict(state, verbose=0)
         return np.argmax(act_values[0])
 
-    def replay(self, model_id: str) -> None:
+    def replay(self) -> None:
         if len(self.memory) < self.batch_size:
             return
 
@@ -108,15 +107,15 @@ class DDQN:
         q_target = sample_qhat
 
         self.model.fit(sample_states, q_target, epochs=1, verbose=0)
-        # Model save? with model_id
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
 
-def train_ddqn(args, env: Env, params: dict, model_id: str) -> list:
+def train_ddqn(args, env: Env, params: dict) -> (list, int):
     _loss = []
-    agent = DDQN(args, env.action_space.n, env.observation_space.shape[0], params=params)
+    is_solved = 0
+    agent = DDQN(args, action_space=env.action_space.n, state_space=env.observation_space.shape[0], params=params)
     for e in range(agent.iteration, args.n_episodes):
         state, _ = env.reset(seed=42)
         state = np.reshape(state, (1, 8))
@@ -133,7 +132,7 @@ def train_ddqn(args, env: Env, params: dict, model_id: str) -> list:
             next_state = np.reshape(next_state, (1, 8))
             agent.remember(state, action, reward, next_state, done)
             state = next_state
-            agent.replay(model_id=model_id)
+            agent.replay()
             if done:
                 print("episode: {}/{}, score: {}".format(e, args.n_episodes, score))
                 break
@@ -149,7 +148,12 @@ def train_ddqn(args, env: Env, params: dict, model_id: str) -> list:
 
         # Checkpoint for models
         if e + 1 % 50 == 0:
+            scorefile = open(args.result_save_path + "/scores.txt", "a+")
+            scorefile.write(f"Episode: {e}, Score: {score} \n")
+            scorefile.flush()
+            scorefile.close()
+
             agent.model.save(args.model_save_path + "/model%09d" % e + '.h5')
             print(f"Saved model at episode {e + 1}.")
 
-    return _loss
+    return _loss, is_solved
