@@ -1,11 +1,14 @@
-import gym
+import uuid
+
+import gymnasium as gym
 import argparse
 import matplotlib.pyplot as plt
-import os
 import warnings
 import dqn
-warnings.simplefilter("ignore")
+from utils import add_recording, generate_model_id
+import numpy as np
 
+warnings.simplefilter("ignore")
 
 ## ===== ===== ===== ===== ===== ===== ===== =====
 ## Parse arguments
@@ -17,7 +20,7 @@ parser.add_argument("--continuous", type=bool, default=False, help="Continous En
 parser.add_argument(
     "--n_episodes",
     type=int,
-    default=1000,
+    default=500,
     help="Number of episodes.",
 )
 parser.add_argument(
@@ -38,25 +41,37 @@ args = parser.parse_args()
 
 
 def main():
-
-   # Set up environment
+    # Set up environment
     env = gym.make(
         "LunarLander-v2",
-        continuous= args.continuous,
-        gravity = -10.0,
-        enable_wind = False,
-        wind_power = 15.0,
-        turbulence_power = 1.5,
+        continuous=args.continuous,
+        gravity=-10.0,
+        enable_wind=False,
+        wind_power=15.0,
+        turbulence_power=1.5,
         render_mode=args.render_mode
     )
+    np.random.seed(42)
     env.action_space.seed(42)
     env.reset(seed=42)
     # print(env.observation_space)
     # print(env.action_space)
 
     # Apply algo
+    loss = []
     if args.algorithm == "dqn":
-        loss = dqn.train_dqn(env, args.n_episodes)
+        config = {
+            "epsilon": 1.0,
+            "gamma": .99,
+            "epsilon_min": .01,
+            "learning_rate": 0.001,
+            "epsilon_decay": .996,
+            "memory": 1000000
+        }
+        model_id = generate_model_id()
+
+        env = add_recording(env=env, algo="dqn", config=config, model_id=model_id)
+        loss = dqn.train_dqn(env=env, episode=args.n_episodes, config=config, model_id=model_id)
 
     elif args.algrotihm == "ddqn":
         pass
@@ -66,9 +81,10 @@ def main():
 
     else:
         print("No such algorithm.")
+        exit(-1)
 
     # Visualize
-    plt.plot([i+1 for i in range(0, len(loss), 2)], loss[::2])
+    plt.plot([i + 1 for i in range(0, len(loss), 2)], loss[::2])
     plt.show()
 
 
