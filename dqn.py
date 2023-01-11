@@ -120,11 +120,3 @@ def train_dqn(episode):
             break
         print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
     return _loss
-
-
-if __name__ == '__main__':
-    print(env.observation_space)
-    print(env.action_space)
-    loss = train_dqn(EPISODES)
-    plt.plot([i + 1 for i in range(0, len(loss), 2)], loss[::2])
-    plt.show()

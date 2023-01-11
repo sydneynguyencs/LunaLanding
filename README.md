@@ -1,7 +1,11 @@
 # LunaLanding
 Hackathon Machine Intelligence HS22
 
+Run dqn:
+python main.py --algorithm dqn --n_episodes 1000
 
+
+---
 Task:
  
 Your task is to train a deep reinforcement learning agent in the OpenAI-Gym "LunarLander-v2" environment.
