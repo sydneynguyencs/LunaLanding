@@ -1,3 +1,4 @@
+import glob
 import random
 from gymnasium import Env
 from keras import Sequential
@@ -6,6 +7,7 @@ from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.activations import relu, linear
 import numpy as np
+import tensorflow as tf
 
 
 # --------------------------------------------------------------
@@ -17,19 +19,32 @@ import numpy as np
 class DDQN:
     """ Implementation of double deep q learning algorithm """
 
-    def __init__(self, action_space: int, state_space: int, config: dict) -> None:
+    def __init__(self, args, action_space: int, state_space: int, params: dict) -> None:
         self.action_space = action_space
         self.state_space = state_space
-        self.epsilon = config['epsilon']
-        self.gamma = config['gamma']
+        self.epsilon = params['epsilon']
+        self.gamma = params['gamma']
         self.batch_size = 64
-        self.epsilon_min = config['epsilon_min']
-        self.learning_rate = config['learning_rate']
-        self.epsilon_decay = config['epsilon_decay']
-        self.memory = deque(maxlen=config['memory'])
-        self.model = self.build_model()
-        self.model_target = self.build_model()  # Second (target) neural network
+        self.epsilon_min = .01
+        self.learning_rate = params['learning_rate']
+        self.epsilon_decay = .996
+        self.memory = deque(maxlen=params['memory'])
+        self.iteration = 0
+        self.model_save_path = args.model_save_path
+        self.result_save_path = args.result_save_path
+        self.model = self.load_model()
+        self.model_target = self.load_model()  # Second (target) neural network
         self.update_target_from_model()  # Update weights
+
+    def load_model(self):
+        model = self.build_model()
+        modelfiles = glob.glob("%s/model0*.h5" % self.model_save_path)
+        modelfiles.sort()
+        if len(modelfiles) >= 1:
+            model = tf.keras.models.load_model(modelfiles[-1])
+            self.iteration = int(modelfiles[-1].split("/")[-1].replace(".h5", "").replace("model", "")) + 1
+            print(f"Model loaded from previous state at episode {self.iteration}.")
+        return model
 
     def build_model(self) -> Sequential:
         model = Sequential()
@@ -52,7 +67,7 @@ class DDQN:
         act_values = self.model.predict(state, verbose=0)
         return np.argmax(act_values[0])
 
-    def replay(self, model_id: str) -> None:
+    def replay(self) -> None:
         if len(self.memory) < self.batch_size:
             return
 
@@ -92,16 +107,16 @@ class DDQN:
         q_target = sample_qhat
 
         self.model.fit(sample_states, q_target, epochs=1, verbose=0)
-        # Model save? with model_id
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
 
-def train_ddqn(env: Env, episode: int, config: dict, model_id: str) -> list:
+def train_ddqn(args, env: Env, params: dict) -> (list, int):
     _loss = []
-    agent = DDQN(env.action_space.n, env.observation_space.shape[0], config=config)
-    for e in range(episode):
+    is_solved = 0
+    agent = DDQN(args, action_space=env.action_space.n, state_space=env.observation_space.shape[0], params=params)
+    for e in range(agent.iteration, args.n_episodes):
         state, _ = env.reset(seed=42)
         state = np.reshape(state, (1, 8))
         score = 0
@@ -117,9 +132,9 @@ def train_ddqn(env: Env, episode: int, config: dict, model_id: str) -> list:
             next_state = np.reshape(next_state, (1, 8))
             agent.remember(state, action, reward, next_state, done)
             state = next_state
-            agent.replay(model_id=model_id)
+            agent.replay()
             if done:
-                print("episode: {}/{}, score: {}".format(e, episode, score))
+                print("episode: {}/{}, score: {}".format(e, args.n_episodes, score))
                 break
         _loss.append(score)
         agent.update_target_from_model()  # Update the weights after each episode
@@ -130,4 +145,15 @@ def train_ddqn(env: Env, episode: int, config: dict, model_id: str) -> list:
             print('\n Task Completed! \n')
             break
         print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
-    return _loss
+
+        # Checkpoint for models
+        if e + 1 % 50 == 0:
+            scorefile = open(args.result_save_path + "/scores.txt", "a+")
+            scorefile.write(f"Episode: {e}, Score: {score} \n")
+            scorefile.flush()
+            scorefile.close()
+
+            agent.model.save(args.model_save_path + "/model%09d" % e + '.h5')
+            print(f"Saved model at episode {e + 1}.")
+
+    return _loss, is_solved

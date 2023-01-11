@@ -4,9 +4,9 @@ import matplotlib.pyplot as plt
 import warnings
 import dqn
 import ddqn
-from utils import add_recording, generate_model_id
+from utils import add_recording, get_paths
 import numpy as np
-import os
+from sklearn.model_selection import ParameterGrid
 
 warnings.simplefilter("ignore")
 
@@ -20,7 +20,7 @@ parser.add_argument("--continuous", type=bool, default=False, help="Continuous E
 parser.add_argument(
     "--n_episodes",
     type=int,
-    default=500,
+    default=400,
     help="Number of episodes.",
 )
 parser.add_argument(
@@ -41,15 +41,6 @@ args = parser.parse_args()
 
 
 def main():
-
-    args.model_save_path = args.save_path + "/" + args.algorithm + "/model"
-    args.result_save_path = args.save_path + "/" + args.algorithm + "/result"
-    args.video_save_path = args.save_path + "/" + args.algorithm + "/video"
-    os.makedirs(args.model_save_path, exist_ok=True)
-    os.makedirs(args.result_save_path, exist_ok=True)
-    os.makedirs(args.video_save_path, exist_ok=True)
-
-
     # Set up environment
     env = gym.make(
         "LunarLander-v2",
@@ -67,34 +58,55 @@ def main():
     # print(env.action_space)
 
     # Apply algo
-    loss = []
     if args.algorithm == "dqn":
-        config = {
-            "epsilon": 1.0,
-            "gamma": .99,
-            "epsilon_min": .01,
-            "learning_rate": 0.001,
-            "epsilon_decay": .996,
-            "memory": 1000000
-        }
-        model_id = generate_model_id()
+        # define parameter grid to try out on algorithm
+        params_dict = {'epsilon': [1.0, 0.5], 'gamma': [.99, .66], 'learning_rate': [0.001],
+                       'memory': [1000000, 500000]}
+        param_grid = ParameterGrid(params_dict)
 
-        env = add_recording(env=env, algo="dqn", config=config, model_id=model_id)
-        loss = dqn.train_dqn(args, env=env, config=config, model_id=model_id)
+        # execute on each parameter combination
+        stack = []
+        for params in param_grid:
+            args.model_save_path, args.result_save_path, args.video_save_path = get_paths(root=args.save_path,
+                                                                                          algo=args.algorithm,
+                                                                                          params=params)
+
+            # add recording wrapper
+            env = add_recording(env=env, save_path=args.video_save_path, n_episodes=args.n_episodes)
+            loss, mean_over_last_100 = dqn.train_dqn(args, env=env, params=params)
+            stack.append({'params': params, 'mean_reward': mean_over_last_100})
+
+        stack = sorted(stack, key=lambda d: d['mean_reward'])
+        best_algo = stack.pop()
+        best_file = open(args.save_path + "/" + args.algorithm + "/best_algo.txt", "a+")
+        best_file.write(f"Params: {best_algo['params']}, Score: {best_algo['mean_reward']} \n")
+        best_file.flush()
+        best_file.close()
 
     elif args.algorithm == "ddqn":
-        config = {
-            "epsilon": 1.0,
-            "gamma": .99,
-            "epsilon_min": .01,
-            "learning_rate": 0.001,
-            "epsilon_decay": .996,
-            "memory": 1000000
-        }
-        model_id = generate_model_id()
+        # define parameter grid to try out on algorithm
+        params_dict = {'epsilon': [1.0, 0.5], 'gamma': [.99, .66], 'learning_rate': [0.001],
+                       'memory': [1000000, 500000]}
+        param_grid = ParameterGrid(params_dict)
 
-        env = add_recording(env=env, algo="ddqn", config=config, model_id=model_id)
-        loss = ddqn.train_ddqn(env=env, episode=args.n_episodes, config=config, model_id=model_id)
+        # execute on each parameter combination
+        stack = []
+        for params in param_grid:
+            args.model_save_path, args.result_save_path, args.video_save_path = get_paths(root=args.save_path,
+                                                                                          algo=args.algorithm,
+                                                                                          params=params)
+
+            # add recording wrapper
+            env = add_recording(env=env, save_path=args.video_save_path, n_episodes=args.n_episodes)
+            loss, mean_over_last_100 = ddqn.train_ddqn(args, env=env, params=params)
+            stack.append({'params': params, 'mean_reward': mean_over_last_100})
+
+        stack = sorted(stack, key=lambda d: d['mean_reward'])
+        best_algo = stack.pop()
+        best_file = open(args.save_path + "/" + args.algorithm + "/best_algo.txt", "a+")
+        best_file.write(f"Params: {best_algo['params']}, Score: {best_algo['mean_reward']} \n")
+        best_file.flush()
+        best_file.close()
 
     elif args.algorithm == "a2c":
         pass
@@ -104,8 +116,8 @@ def main():
         exit(-1)
 
     # Visualize
-    plt.plot([i + 1 for i in range(0, len(loss), 2)], loss[::2])
-    plt.show()
+    # plt.plot([i + 1 for i in range(0, len(loss), 2)], loss[::2])
+    # plt.show()
 
 
 if __name__ == "__main__":
