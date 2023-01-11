@@ -16,16 +16,16 @@ import numpy as np
 class DQN:
     """ Implementation of deep q learning algorithm """
 
-    def __init__(self, action_space: int, state_space: int, config: dict) -> None:
+    def __init__(self, action_space: int, state_space: int, params: dict) -> None:
         self.action_space = action_space
         self.state_space = state_space
-        self.epsilon = config['epsilon']
-        self.gamma = config['gamma']
+        self.epsilon = params['epsilon']
+        self.gamma = params['gamma']
         self.batch_size = 64
-        self.epsilon_min = config['epsilon_min']
-        self.learning_rate = config['learning_rate']
-        self.epsilon_decay = config['epsilon_decay']
-        self.memory = deque(maxlen=config['memory'])
+        self.epsilon_min = .01
+        self.learning_rate = params['learning_rate']
+        self.epsilon_decay = .996
+        self.memory = deque(maxlen=params['memory'])
         self.model = self.build_model()
 
     def build_model(self) -> Sequential:
@@ -70,9 +70,9 @@ class DQN:
             self.epsilon *= self.epsilon_decay
 
 
-def train_dqn(env: Env, episode: int, config: dict, model_id: str) -> list:
+def train_dqn(env: Env, episode: int, params: dict, model_id: str) -> list:
     _loss = []
-    agent = DQN(env.action_space.n, env.observation_space.shape[0], config=config)
+    agent = DQN(env.action_space.n, env.observation_space.shape[0], params=params)
     for e in range(episode):
         state, _ = env.reset(seed=42)
         state = np.reshape(state, (1, 8))

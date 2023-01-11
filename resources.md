@@ -4,3 +4,6 @@
 # DDQN
 * https://github.com/anh-nn01/Lunar-Lander-Double-Deep-Q-Networks/blob/master/Code%20source/Lunar_Lander_v2.py
 * https://static.packt-cdn.com/downloads/Reinforcement_Learning.pdf
+
+## Batch Size
+* https://arxiv.org/pdf/1803.02811.pdf

@@ -6,6 +6,7 @@ import dqn
 import ddqn
 from utils import add_recording, generate_model_id
 import numpy as np
+from sklearn.model_selection import ParameterGrid
 
 warnings.simplefilter("ignore")
 
@@ -59,32 +60,39 @@ def main():
     # Apply algo
     loss = []
     if args.algorithm == "dqn":
-        config = {
-            "epsilon": 1.0,
-            "gamma": .99,
-            "epsilon_min": .01,
-            "learning_rate": 0.001,
-            "epsilon_decay": .996,
-            "memory": 1000000
-        }
-        model_id = generate_model_id()
+        # define parameter grid to try out on algorithm
+        params_dict = {'epsilon': [1.0], 'gamma': [.99], 'learning_rate': [0.001], 'memory': [1000000]}
+        param_grid = ParameterGrid(params_dict)
 
-        env = add_recording(env=env, algo="dqn", config=config, model_id=model_id)
-        loss = dqn.train_dqn(env=env, episode=args.n_episodes, config=config, model_id=model_id)
+        # execute on each parameter combination
+        stack = []
+        for params in param_grid:
+            # Generate unique hash for Keras model for later identification
+            model_id = generate_model_id()
+
+            # add recording wrapper
+            env = add_recording(env=env, algo="dqn", params=params, model_id=model_id)
+
+            loss = dqn.train_dqn(env=env, episode=args.n_episodes, params=params, model_id=model_id)
+
+            stack.append({'params': params, 'reward': loss})
+
+        stack = sorted(stack, key=lambda d: d['reward'])
 
     elif args.algorithm == "ddqn":
-        config = {
-            "epsilon": 1.0,
-            "gamma": .99,
-            "epsilon_min": .01,
-            "learning_rate": 0.001,
-            "epsilon_decay": .996,
-            "memory": 1000000
-        }
-        model_id = generate_model_id()
+        # define parameter grid to try out on algorithm
+        params_dict = {'epsilon': [1.0], 'gamma': [.99], 'learning_rate': [0.001], 'memory': [1000000]}
+        param_grid = ParameterGrid(params_dict)
 
-        env = add_recording(env=env, algo="ddqn", config=config, model_id=model_id)
-        loss = ddqn.train_ddqn(env=env, episode=args.n_episodes, config=config, model_id=model_id)
+        # execute on each parameter combination
+        for params in param_grid:
+            # Generate unique hash for Keras model for later identification
+            model_id = generate_model_id()
+
+            # add recording wrapper
+            env = add_recording(env=env, algo="ddqn", params=params, model_id=model_id)
+
+            loss = ddqn.train_ddqn(env=env, episode=args.n_episodes, params=params, model_id=model_id)
 
     elif args.algorithm == "a2c":
         pass
