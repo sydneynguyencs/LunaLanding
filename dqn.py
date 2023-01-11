@@ -1,48 +1,59 @@
-import datetime
-
-import gym
+import gymnasium as gym
 import random
-from keras import Sequential, callbacks
+from keras import Sequential
 from collections import deque
 from keras.layers import Dense
 from keras.optimizers import Adam
 import matplotlib.pyplot as plt
 from keras.activations import relu, linear
-
+import uuid
+import json
+import numpy as np
 
 # --------------------------------------------------------------
 # https://shiva-verma.medium.com/solving-lunar-lander-openaigym-reinforcement-learning-785675066197
 # --------------------------------------------------------------
 
-import numpy as np
-env = gym.make('LunarLander-v2')
+METADATA = {
+    "name": "DQN",
+    "epsilon": 1.0,
+    "gamma": .99,
+    "epsilon_min": .01,
+    "learning_rate": 0.001,
+    "epsilon_decay": .996,
+    "memory": 1000000
+}
+EPISODES = 500
+MODEL_ID = str(uuid.uuid4())
+
+env = gym.make('LunarLander-v2', render_mode="rgb_array")
+env = gym.wrappers.RecordVideo(env, f'experiments/dqn/model-{MODEL_ID}', episode_trigger=lambda x: x % 100 == 0,
+                               name_prefix=json.dumps(METADATA))
 np.random.seed(0)
 
 
 class DQN:
-
     """ Implementation of deep q learning algorithm """
 
     def __init__(self, action_space, state_space):
 
         self.action_space = action_space
         self.state_space = state_space
-        self.epsilon = 1.0
-        self.gamma = .99
+        self.epsilon = METADATA['epsilon']
+        self.gamma = METADATA['gamma']
         self.batch_size = 64
-        self.epsilon_min = .01
-        self.lr = 0.001
-        self.epsilon_decay = .996
-        self.memory = deque(maxlen=1000000)
+        self.epsilon_min = METADATA['epsilon_min']
+        self.learning_rate = METADATA['learning_rate']
+        self.epsilon_decay = METADATA['epsilon_decay']
+        self.memory = deque(maxlen=METADATA['memory'])
         self.model = self.build_model()
 
     def build_model(self):
-
         model = Sequential()
         model.add(Dense(150, input_dim=self.state_space, activation=relu))
         model.add(Dense(120, activation=relu))
         model.add(Dense(self.action_space, activation=linear))
-        model.compile(loss='mse', optimizer=Adam(lr=self.lr))
+        model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
         return model
 
     def remember(self, state, action, reward, next_state, terminated, truncated):
@@ -70,22 +81,18 @@ class DQN:
         states = np.squeeze(states)
         next_states = np.squeeze(next_states)
 
-        targets = rewards + self.gamma*(np.amax(self.model.predict_on_batch(next_states), axis=1))*(1-dones)
+        targets = rewards + self.gamma * (np.amax(self.model.predict_on_batch(next_states), axis=1)) * (1 - dones)
         targets_full = self.model.predict_on_batch(states)
         ind = np.array([i for i in range(self.batch_size)])
         targets_full[[ind], [actions]] = targets
 
-        log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        tensorboard_callback = callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-
-        self.model.fit(states, targets_full, epochs=1, verbose=0, callbacks=[tensorboard_callback])
+        self.model.fit(states, targets_full, epochs=1, verbose=0)
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
 
 def train_dqn(episode):
-
-    loss = []
+    _loss = []
     agent = DQN(env.action_space.n, env.observation_space.shape[0])
     for e in range(episode):
         state, _ = env.reset(seed=0)
@@ -104,22 +111,20 @@ def train_dqn(episode):
             if terminated or truncated:
                 print("episode: {}/{}, score: {}".format(e, episode, score))
                 break
-        loss.append(score)
+        _loss.append(score)
 
         # Average score of last 100 episode
-        is_solved = np.mean(loss[-100:])
+        is_solved = np.mean(_loss[-100:])
         if is_solved > 200:
             print('\n Task Completed! \n')
             break
         print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
-    return loss
+    return _loss
 
 
 if __name__ == '__main__':
-
     print(env.observation_space)
     print(env.action_space)
-    episodes = 400
-    loss = train_dqn(episodes)
-    plt.plot([i+1 for i in range(0, len(loss), 2)], loss[::2])
+    loss = train_dqn(EPISODES)
+    plt.plot([i + 1 for i in range(0, len(loss), 2)], loss[::2])
     plt.show()
