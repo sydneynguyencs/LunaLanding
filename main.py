@@ -1,4 +1,4 @@
-import gym
+import gymnasium as gym
 import argparse
 import matplotlib.pyplot as plt
 import os
@@ -13,7 +13,7 @@ warnings.simplefilter("ignore")
 
 parser = argparse.ArgumentParser(description="LunaLanding")
 
-parser.add_argument("--continuous", type=bool, default=False, help="Continous Environment")
+parser.add_argument("--continuous", type=bool, default=False, help="Continuous Environment")
 parser.add_argument(
     "--n_episodes",
     type=int,
@@ -38,6 +38,12 @@ args = parser.parse_args()
 
 
 def main():
+    args.model_save_path = args.save_path + "/" + args.algorithm + "/model"
+    args.result_save_path = args.save_path + "/" + args.algorithm + "/result"
+    args.video_save_path = args.save_path + "/" + args.algorithm + "/video"
+    os.makedirs(args.model_save_path, exist_ok=True)
+    os.makedirs(args.result_save_path, exist_ok=True)
+    os.makedirs(args.video_save_path, exist_ok=True)
 
    # Set up environment
     env = gym.make(
@@ -56,7 +62,7 @@ def main():
 
     # Apply algo
     if args.algorithm == "dqn":
-        loss = dqn.train_dqn(env, args.n_episodes)
+        loss = dqn.train_dqn(env, args)
 
     elif args.algrotihm == "ddqn":
         pass

@@ -1,13 +1,15 @@
 import datetime
-
-import gym
+import gymnasium as gym
+import glob
 import random
 import numpy as np
+import os
 from keras import Sequential, callbacks
 from collections import deque
 from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.activations import relu, linear
+import tensorflow as tf
 
 
 # --------------------------------------------------------------
@@ -19,7 +21,7 @@ class DQN:
 
     """ Implementation of deep q learning algorithm """
 
-    def __init__(self, action_space, state_space):
+    def __init__(self, action_space, state_space, model_save_path, result_save_path, video_save_path):
 
         self.action_space = action_space
         self.state_space = state_space
@@ -30,7 +32,21 @@ class DQN:
         self.lr = 0.001
         self.epsilon_decay = .996
         self.memory = deque(maxlen=1000000)
-        self.model = self.build_model()
+        self.iteration = 0
+        self.model_save_path = model_save_path
+        self.result_save_path = result_save_path
+        self.video_save_path = video_save_path
+        self.model = self.load_model()
+
+    def load_model(self):
+        model = self.build_model()
+        modelfiles = glob.glob("%s/model0*.h5" % self.model_save_path)
+        modelfiles.sort()
+        if len(modelfiles) >= 1:
+            model = tf.keras.models.load_model(modelfiles[-1])
+            self.iteration = int(modelfiles[-1].split("/")[3].replace(".h5","").replace("model","")) + 1
+            print(f"Model loaded from previous state at episode {self.iteration}.")
+        return model
 
     def build_model(self):
 
@@ -70,20 +86,17 @@ class DQN:
         targets_full = self.model.predict_on_batch(states)
         ind = np.array([i for i in range(self.batch_size)])
         targets_full[[ind], [actions]] = targets
-
-        log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-        tensorboard_callback = callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
-
-        self.model.fit(states, targets_full, epochs=1, verbose=0, callbacks=[tensorboard_callback])
+    
+        self.model.fit(states, targets_full, epochs=1, verbose=0)
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
 
-def train_dqn(env, episode):
+def train_dqn(env, args):
 
     loss = []
-    agent = DQN(env.action_space.n, env.observation_space.shape[0])
-    for e in range(episode):
+    agent = DQN(env.action_space.n, env.observation_space.shape[0], args.model_save_path, args.result_save_path, args.video_save_path)
+    for e in range(agent.iteration, args.n_episodes):
         state, _ = env.reset(seed=0)
         state = np.reshape(state, (1, 8))
         score = 0
@@ -98,7 +111,7 @@ def train_dqn(env, episode):
             state = next_state
             agent.replay()
             if terminated or truncated:
-                print("episode: {}/{}, score: {}".format(e, episode, score))
+                print("episode: {}/{}, score: {}".format(e+1, args.n_episodes, score))
                 break
         loss.append(score)
 
@@ -108,4 +121,10 @@ def train_dqn(env, episode):
             print('\n Task Completed! \n')
             break
         print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
+
+        # Checkpoint for models
+        if e+1 % 50 == 0:
+            agent.model.save(args.model_save_path + "/model%09d" % e+'.h5')
+            print(f"Saved model at episode {e+1}.")
+
     return loss
