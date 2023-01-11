@@ -1,0 +1,133 @@
+import random
+from gymnasium import Env
+from keras import Sequential
+from collections import deque
+from keras.layers import Dense
+from keras.optimizers import Adam
+from keras.activations import relu, linear
+import numpy as np
+
+
+# --------------------------------------------------------------
+# Adapted from:
+# https://github.com/anh-nn01/Lunar-Lander-Double-Deep-Q-Networks/blob/master/Code%20source/Lunar_Lander_v2.py
+# --------------------------------------------------------------
+
+
+class DDQN:
+    """ Implementation of double deep q learning algorithm """
+
+    def __init__(self, action_space: int, state_space: int, config: dict) -> None:
+        self.action_space = action_space
+        self.state_space = state_space
+        self.epsilon = config['epsilon']
+        self.gamma = config['gamma']
+        self.batch_size = 64
+        self.epsilon_min = config['epsilon_min']
+        self.learning_rate = config['learning_rate']
+        self.epsilon_decay = config['epsilon_decay']
+        self.memory = deque(maxlen=config['memory'])
+        self.model = self.build_model()
+        self.model_target = self.build_model()  # Second (target) neural network
+        self.update_target_from_model()  # Update weights
+
+    def build_model(self) -> Sequential:
+        model = Sequential()
+        model.add(Dense(150, input_dim=self.state_space, activation=relu))
+        model.add(Dense(120, activation=relu))
+        model.add(Dense(self.action_space, activation=linear))
+        model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
+        return model
+
+    def update_target_from_model(self):
+        # Update the target model from the base model
+        self.model_target.set_weights(self.model.get_weights())
+
+    def remember(self, state, action, reward, next_state, done) -> None:
+        self.memory.append((state, action, reward, next_state, done))
+
+    def act(self, state):
+        if np.random.rand() <= self.epsilon:
+            return random.randrange(self.action_space)
+        act_values = self.model.predict(state, verbose=0)
+        return np.argmax(act_values[0])
+
+    def replay(self, model_id: str) -> None:
+        if len(self.memory) < self.batch_size:
+            return
+
+        # take a mini-batch from replay experience
+        cur_batch_size = min(len(self.memory), self.batch_size)
+        mini_batch = random.sample(self.memory, cur_batch_size)
+
+        # batch data
+        sample_states = np.ndarray(shape=(cur_batch_size, self.state_space))
+        sample_actions = np.ndarray(shape=(cur_batch_size, 1))
+        sample_rewards = np.ndarray(shape=(cur_batch_size, 1))
+        sample_next_states = np.ndarray(shape=(cur_batch_size, self.state_space))
+        sample_dones = np.ndarray(shape=(cur_batch_size, 1))
+
+        temp = 0
+        for exp in mini_batch:
+            sample_states[temp] = exp[0]
+            sample_actions[temp] = exp[1]
+            sample_rewards[temp] = exp[2]
+            sample_next_states[temp] = exp[3]
+            sample_dones[temp] = exp[4]
+            temp += 1
+
+        sample_qhat_next = self.model_target.predict(sample_next_states, verbose=0)
+
+        # set all Q values terminal states to 0
+        sample_qhat_next = sample_qhat_next * (np.ones(shape=sample_dones.shape) - sample_dones)
+        # choose max action for each state
+        sample_qhat_next = np.max(sample_qhat_next, axis=1)
+
+        sample_qhat = self.model.predict(sample_states, verbose=0)
+
+        for i in range(cur_batch_size):
+            a = sample_actions[i, 0]
+            sample_qhat[i, int(a)] = sample_rewards[i] + self.gamma * sample_qhat_next[i]
+
+        q_target = sample_qhat
+
+        self.model.fit(sample_states, q_target, epochs=1, verbose=0)
+        # Model save? with model_id
+
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+
+
+def train_ddqn(env: Env, episode: int, config: dict, model_id: str) -> list:
+    _loss = []
+    agent = DDQN(env.action_space.n, env.observation_space.shape[0], config=config)
+    for e in range(episode):
+        state, _ = env.reset(seed=42)
+        state = np.reshape(state, (1, 8))
+        score = 0
+        max_steps = 3000
+        for i in range(max_steps):
+            action = agent.act(state)
+            env.render()
+            next_state, reward, terminated, truncated, _ = env.step(action)
+            done = False
+            if terminated or truncated:
+                done = True
+            score += reward
+            next_state = np.reshape(next_state, (1, 8))
+            agent.remember(state, action, reward, next_state, done)
+            state = next_state
+            agent.replay(model_id=model_id)
+            if done:
+                print("episode: {}/{}, score: {}".format(e, episode, score))
+                break
+        _loss.append(score)
+        agent.update_target_from_model()  # Update the weights after each episode
+
+        # Average score of last 100 episode
+        is_solved = np.mean(_loss[-100:])
+        if is_solved > 200:
+            print('\n Task Completed! \n')
+            break
+        print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
+    return _loss

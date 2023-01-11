@@ -1,10 +1,9 @@
-import uuid
-
 import gymnasium as gym
 import argparse
 import matplotlib.pyplot as plt
 import warnings
 import dqn
+import ddqn
 from utils import add_recording, generate_model_id
 import numpy as np
 
@@ -73,10 +72,21 @@ def main():
         env = add_recording(env=env, algo="dqn", config=config, model_id=model_id)
         loss = dqn.train_dqn(env=env, episode=args.n_episodes, config=config, model_id=model_id)
 
-    elif args.algrotihm == "ddqn":
-        pass
+    elif args.algorithm == "ddqn":
+        config = {
+            "epsilon": 1.0,
+            "gamma": .99,
+            "epsilon_min": .01,
+            "learning_rate": 0.001,
+            "epsilon_decay": .996,
+            "memory": 1000000
+        }
+        model_id = generate_model_id()
 
-    elif args.algrotihm == "a2c":
+        env = add_recording(env=env, algo="ddqn", config=config, model_id=model_id)
+        loss = ddqn.train_ddqn(env=env, episode=args.n_episodes, config=config, model_id=model_id)
+
+    elif args.algorithm == "a2c":
         pass
 
     else:
