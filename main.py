@@ -6,6 +6,7 @@ import dqn
 import ddqn
 from utils import add_recording, generate_model_id
 import numpy as np
+import os
 from sklearn.model_selection import ParameterGrid
 
 warnings.simplefilter("ignore")
@@ -16,7 +17,7 @@ warnings.simplefilter("ignore")
 
 parser = argparse.ArgumentParser(description="LunaLanding")
 
-parser.add_argument("--continuous", type=bool, default=False, help="Continous Environment")
+parser.add_argument("--continuous", type=bool, default=False, help="Continuous Environment")
 parser.add_argument(
     "--n_episodes",
     type=int,
@@ -41,6 +42,15 @@ args = parser.parse_args()
 
 
 def main():
+
+    args.model_save_path = args.save_path + "/" + args.algorithm + "/model"
+    args.result_save_path = args.save_path + "/" + args.algorithm + "/result"
+    args.video_save_path = args.save_path + "/" + args.algorithm + "/video"
+    os.makedirs(args.model_save_path, exist_ok=True)
+    os.makedirs(args.result_save_path, exist_ok=True)
+    os.makedirs(args.video_save_path, exist_ok=True)
+
+
     # Set up environment
     env = gym.make(
         "LunarLander-v2",
@@ -73,7 +83,7 @@ def main():
             # add recording wrapper
             env = add_recording(env=env, algo="dqn", params=params, model_id=model_id)
 
-            loss = dqn.train_dqn(env=env, episode=args.n_episodes, params=params, model_id=model_id)
+            loss = dqn.train_dqn(args, env=env, params=params, model_id=model_id)
 
             stack.append({'params': params, 'reward': loss})
 
