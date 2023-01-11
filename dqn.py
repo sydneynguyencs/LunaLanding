@@ -1,11 +1,16 @@
+import datetime
+import gymnasium as gym
+import glob
 import random
+import numpy as np
+import os
 from gymnasium import Env
 from keras import Sequential
 from collections import deque
 from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.activations import relu, linear
-import numpy as np
+import tensorflow as tf
 
 # --------------------------------------------------------------
 # Adapted from:
@@ -16,17 +21,31 @@ import numpy as np
 class DQN:
     """ Implementation of deep q learning algorithm """
 
-    def __init__(self, action_space: int, state_space: int, config: dict) -> None:
+    def __init__(self, args, action_space: int, state_space: int, config: dict) -> None:
         self.action_space = action_space
         self.state_space = state_space
         self.epsilon = config['epsilon']
         self.gamma = config['gamma']
         self.batch_size = 64
+        self.iteration = 0
+        self.model_save_path = args.model_save_path
+        self.result_save_path = args.result_save_path
+        self.video_save_path = args.video_save_path
         self.epsilon_min = config['epsilon_min']
         self.learning_rate = config['learning_rate']
         self.epsilon_decay = config['epsilon_decay']
         self.memory = deque(maxlen=config['memory'])
         self.model = self.build_model()
+
+    def load_model(self):
+        model = self.build_model()
+        modelfiles = glob.glob("%s/model0*.h5" % self.model_save_path)
+        modelfiles.sort()
+        if len(modelfiles) >= 1:
+            model = tf.keras.models.load_model(modelfiles[-1])
+            self.iteration = int(modelfiles[-1].split("/")[3].replace(".h5","").replace("model","")) + 1
+            print(f"Model loaded from previous state at episode {self.iteration}.")
+        return model
 
     def build_model(self) -> Sequential:
         model = Sequential()
@@ -65,15 +84,16 @@ class DQN:
         targets_full[[ind], [actions]] = targets
 
         self.model.fit(states, targets_full, epochs=1, verbose=0)
-        # Model save? with model_id
+
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
 
-def train_dqn(env: Env, episode: int, config: dict, model_id: str) -> list:
+
+def train_dqn(args, env: Env, config: dict, model_id: str) -> list:
     _loss = []
-    agent = DQN(env.action_space.n, env.observation_space.shape[0], config=config)
-    for e in range(episode):
+    agent = DQN(args, env.action_space.n, env.observation_space.shape[0], config=config)
+    for e in range(agent.iteration, args.n_episodes):
         state, _ = env.reset(seed=42)
         state = np.reshape(state, (1, 8))
         score = 0
@@ -89,9 +109,10 @@ def train_dqn(env: Env, episode: int, config: dict, model_id: str) -> list:
             next_state = np.reshape(next_state, (1, 8))
             agent.remember(state, action, reward, next_state, done)
             state = next_state
+
             agent.replay(model_id=model_id)
             if done:
-                print("episode: {}/{}, score: {}".format(e, episode, score))
+                print("episode: {}/{}, score: {}".format(e+1, args.n_episodes, score))
                 break
         _loss.append(score)
 
@@ -101,4 +122,10 @@ def train_dqn(env: Env, episode: int, config: dict, model_id: str) -> list:
             print('\n Task Completed! \n')
             break
         print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
+
+        # Checkpoint for models
+        if e+1 % 50 == 0:
+            agent.model.save(args.model_save_path + "/model%09d" % e+'.h5')
+            print(f"Saved model at episode {e+1}.")
+
     return _loss
