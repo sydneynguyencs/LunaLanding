@@ -36,8 +36,8 @@ class DQN:
         model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
         return model
 
-    def remember(self, state, action, reward, next_state, terminated, truncated) -> None:
-        self.memory.append((state, action, reward, next_state, terminated, truncated))
+    def remember(self, state, action, reward, next_state, done) -> None:
+        self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state):
         if np.random.rand() <= self.epsilon:
@@ -74,7 +74,7 @@ def train_dqn(env: Env, episode: int, config: dict, model_id: str) -> list:
     _loss = []
     agent = DQN(env.action_space.n, env.observation_space.shape[0], config=config)
     for e in range(episode):
-        state, _ = env.reset(seed=0)
+        state, _ = env.reset(seed=42)
         state = np.reshape(state, (1, 8))
         score = 0
         max_steps = 3000
@@ -82,12 +82,15 @@ def train_dqn(env: Env, episode: int, config: dict, model_id: str) -> list:
             action = agent.act(state)
             env.render()
             next_state, reward, terminated, truncated, _ = env.step(action)
+            done = False
+            if terminated or truncated:
+                done = True
             score += reward
             next_state = np.reshape(next_state, (1, 8))
-            agent.remember(state, action, reward, next_state, terminated, truncated)
+            agent.remember(state, action, reward, next_state, done)
             state = next_state
             agent.replay(model_id=model_id)
-            if terminated or truncated:
+            if done:
                 print("episode: {}/{}, score: {}".format(e, episode, score))
                 break
         _loss.append(score)
