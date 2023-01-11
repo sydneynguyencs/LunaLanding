@@ -1,7 +1,11 @@
 import gym
 import argparse
+import matplotlib.pyplot as plt
+import os
 import warnings
+import dqn
 warnings.simplefilter("ignore")
+
 
 ## ===== ===== ===== ===== ===== ===== ===== =====
 ## Parse arguments
@@ -10,8 +14,23 @@ warnings.simplefilter("ignore")
 parser = argparse.ArgumentParser(description="LunaLanding")
 
 parser.add_argument("--continuous", type=bool, default=False, help="Continous Environment")
-
+parser.add_argument(
+    "--n_episodes",
+    type=int,
+    default=1000,
+    help="Number of episodes.",
+)
+parser.add_argument(
+    "--save_path", type=str, default="experiments", help="Path for model and logs"
+)
+parser.add_argument(
+    "--render_mode", type=str, default="rgb_array", help="Render mode"
+)
+parser.add_argument(
+    "--algorithm", type=str, default="dqn", help="Algorithm"
+)
 args = parser.parse_args()
+
 
 ## ===== ===== ===== ===== ===== ===== ===== =====
 ## Main function
@@ -20,6 +39,7 @@ args = parser.parse_args()
 
 def main():
 
+   # Set up environment
     env = gym.make(
         "LunarLander-v2",
         continuous= args.continuous,
@@ -27,20 +47,29 @@ def main():
         enable_wind = False,
         wind_power = 15.0,
         turbulence_power = 1.5,
-        render_mode="human"
+        render_mode=args.render_mode
     )
-
     env.action_space.seed(42)
+    env.reset(seed=42)
+    # print(env.observation_space)
+    # print(env.action_space)
 
-    observation, info = env.reset(seed=42)
+    # Apply algo
+    if args.algorithm == "dqn":
+        loss = dqn.train_dqn(env, args.n_episodes)
 
-    for _ in range(1000):
-        observation, reward, terminated, truncated, info = env.step(env.action_space.sample())
+    elif args.algrotihm == "ddqn":
+        pass
 
-        if terminated or truncated:
-            observation, info = env.reset()
+    elif args.algrotihm == "a2c":
+        pass
 
-    env.close()
+    else:
+        print("No such algorithm.")
+
+    # Visualize
+    plt.plot([i+1 for i in range(0, len(loss), 2)], loss[::2])
+    plt.show()
 
 
 if __name__ == "__main__":

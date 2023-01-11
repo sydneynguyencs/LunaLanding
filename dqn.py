@@ -2,21 +2,17 @@ import datetime
 
 import gym
 import random
+import numpy as np
 from keras import Sequential, callbacks
 from collections import deque
 from keras.layers import Dense
 from keras.optimizers import Adam
-import matplotlib.pyplot as plt
 from keras.activations import relu, linear
 
 
 # --------------------------------------------------------------
 # https://shiva-verma.medium.com/solving-lunar-lander-openaigym-reinforcement-learning-785675066197
 # --------------------------------------------------------------
-
-import numpy as np
-env = gym.make('LunarLander-v2')
-np.random.seed(0)
 
 
 class DQN:
@@ -83,7 +79,7 @@ class DQN:
             self.epsilon *= self.epsilon_decay
 
 
-def train_dqn(episode):
+def train_dqn(env, episode):
 
     loss = []
     agent = DQN(env.action_space.n, env.observation_space.shape[0])
@@ -113,13 +109,3 @@ def train_dqn(episode):
             break
         print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
     return loss
-
-
-if __name__ == '__main__':
-
-    print(env.observation_space)
-    print(env.action_space)
-    episodes = 400
-    loss = train_dqn(episodes)
-    plt.plot([i+1 for i in range(0, len(loss), 2)], loss[::2])
-    plt.show()
