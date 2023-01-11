@@ -4,39 +4,38 @@ import glob
 import random
 import numpy as np
 import os
-from keras import Sequential, callbacks
+from gymnasium import Env
+from keras import Sequential
 from collections import deque
 from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.activations import relu, linear
 import tensorflow as tf
 
-
 # --------------------------------------------------------------
+# Adapted from:
 # https://shiva-verma.medium.com/solving-lunar-lander-openaigym-reinforcement-learning-785675066197
 # --------------------------------------------------------------
 
 
 class DQN:
-
     """ Implementation of deep q learning algorithm """
 
-    def __init__(self, action_space, state_space, model_save_path, result_save_path, video_save_path):
-
+    def __init__(self, action_space: int, state_space: int, config: dict, model_save_path, result_save_path, video_save_path) -> None:
         self.action_space = action_space
         self.state_space = state_space
-        self.epsilon = 1.0
-        self.gamma = .99
+        self.epsilon = config['epsilon']
+        self.gamma = config['gamma']
         self.batch_size = 64
-        self.epsilon_min = .01
-        self.lr = 0.001
-        self.epsilon_decay = .996
-        self.memory = deque(maxlen=1000000)
         self.iteration = 0
         self.model_save_path = model_save_path
         self.result_save_path = result_save_path
         self.video_save_path = video_save_path
-        self.model = self.load_model()
+        self.epsilon_min = config['epsilon_min']
+        self.learning_rate = config['learning_rate']
+        self.epsilon_decay = config['epsilon_decay']
+        self.memory = deque(maxlen=config['memory'])
+        self.model = self.build_model()
 
     def load_model(self):
         model = self.build_model()
@@ -48,27 +47,24 @@ class DQN:
             print(f"Model loaded from previous state at episode {self.iteration}.")
         return model
 
-    def build_model(self):
-
+    def build_model(self) -> Sequential:
         model = Sequential()
         model.add(Dense(150, input_dim=self.state_space, activation=relu))
         model.add(Dense(120, activation=relu))
         model.add(Dense(self.action_space, activation=linear))
-        model.compile(loss='mse', optimizer=Adam(lr=self.lr))
+        model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
         return model
 
-    def remember(self, state, action, reward, next_state, terminated, truncated):
-        self.memory.append((state, action, reward, next_state, terminated, truncated))
+    def remember(self, state, action, reward, next_state, done) -> None:
+        self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state):
-
         if np.random.rand() <= self.epsilon:
             return random.randrange(self.action_space)
         act_values = self.model.predict(state)
         return np.argmax(act_values[0])
 
-    def replay(self):
-
+    def replay(self, model_id: str) -> None:
         if len(self.memory) < self.batch_size:
             return
 
@@ -82,22 +78,23 @@ class DQN:
         states = np.squeeze(states)
         next_states = np.squeeze(next_states)
 
-        targets = rewards + self.gamma*(np.amax(self.model.predict_on_batch(next_states), axis=1))*(1-dones)
+        targets = rewards + self.gamma * (np.amax(self.model.predict_on_batch(next_states), axis=1)) * (1 - dones)
         targets_full = self.model.predict_on_batch(states)
         ind = np.array([i for i in range(self.batch_size)])
         targets_full[[ind], [actions]] = targets
-    
+
         self.model.fit(states, targets_full, epochs=1, verbose=0)
+
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay
 
 
-def train_dqn(env, args):
 
-    loss = []
-    agent = DQN(env.action_space.n, env.observation_space.shape[0], args.model_save_path, args.result_save_path, args.video_save_path)
+def train_dqn(args, env: Env, config: dict, model_id: str) -> list:
+    _loss = []
+    agent = DQN(env.action_space.n, env.observation_space.shape[0], config=config, args.model_save_path, args.result_save_path, args.video_save_path)
     for e in range(agent.iteration, args.n_episodes):
-        state, _ = env.reset(seed=0)
+        state, _ = env.reset(seed=42)
         state = np.reshape(state, (1, 8))
         score = 0
         max_steps = 3000
@@ -105,18 +102,22 @@ def train_dqn(env, args):
             action = agent.act(state)
             env.render()
             next_state, reward, terminated, truncated, _ = env.step(action)
+            done = False
+            if terminated or truncated:
+                done = True
             score += reward
             next_state = np.reshape(next_state, (1, 8))
-            agent.remember(state, action, reward, next_state, terminated, truncated)
+            agent.remember(state, action, reward, next_state, done)
             state = next_state
-            agent.replay()
-            if terminated or truncated:
+
+            agent.replay(model_id=model_id)
+            if done:
                 print("episode: {}/{}, score: {}".format(e+1, args.n_episodes, score))
                 break
-        loss.append(score)
+        _loss.append(score)
 
         # Average score of last 100 episode
-        is_solved = np.mean(loss[-100:])
+        is_solved = np.mean(_loss[-100:])
         if is_solved > 200:
             print('\n Task Completed! \n')
             break
@@ -127,4 +128,4 @@ def train_dqn(env, args):
             agent.model.save(args.model_save_path + "/model%09d" % e+'.h5')
             print(f"Saved model at episode {e+1}.")
 
-    return loss
+    return _loss
