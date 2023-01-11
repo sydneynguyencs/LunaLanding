@@ -21,16 +21,16 @@ import tensorflow as tf
 class DQN:
     """ Implementation of deep q learning algorithm """
 
-    def __init__(self, action_space: int, state_space: int, config: dict, model_save_path, result_save_path, video_save_path) -> None:
+    def __init__(self, args, action_space: int, state_space: int, config: dict) -> None:
         self.action_space = action_space
         self.state_space = state_space
         self.epsilon = config['epsilon']
         self.gamma = config['gamma']
         self.batch_size = 64
         self.iteration = 0
-        self.model_save_path = model_save_path
-        self.result_save_path = result_save_path
-        self.video_save_path = video_save_path
+        self.model_save_path = args.model_save_path
+        self.result_save_path = args.result_save_path
+        self.video_save_path = args.video_save_path
         self.epsilon_min = config['epsilon_min']
         self.learning_rate = config['learning_rate']
         self.epsilon_decay = config['epsilon_decay']
@@ -92,7 +92,7 @@ class DQN:
 
 def train_dqn(args, env: Env, config: dict, model_id: str) -> list:
     _loss = []
-    agent = DQN(env.action_space.n, env.observation_space.shape[0], config=config, args.model_save_path, args.result_save_path, args.video_save_path)
+    agent = DQN(args, env.action_space.n, env.observation_space.shape[0], config=config)
     for e in range(agent.iteration, args.n_episodes):
         state, _ = env.reset(seed=42)
         state = np.reshape(state, (1, 8))

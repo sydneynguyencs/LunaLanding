@@ -6,6 +6,7 @@ import dqn
 import ddqn
 from utils import add_recording, generate_model_id
 import numpy as np
+import os
 
 warnings.simplefilter("ignore")
 
