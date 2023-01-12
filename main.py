@@ -79,7 +79,7 @@ def main():
                                                                                           params=params)
 
             # add recording wrapper
-            env = add_recording(env=env, save_path=args.video_save_path, n_episodes=args.n_episodes)
+            env = add_recording(env=env, save_path=args.video_save_path)
             loss, mean_over_last_100 = dqn.train_dqn(args, env=env, params=params)
             stack.append({'params': params, 'mean_reward': mean_over_last_100})
 
@@ -111,7 +111,7 @@ def main():
                                                                                           params=params)
 
             # add recording wrapper
-            env = add_recording(env=env, save_path=args.video_save_path, n_episodes=args.n_episodes)
+            env = add_recording(env=env, save_path=args.video_save_path)
             loss, mean_over_last_100 = ddqn.train_ddqn(args, env=env, params=params)
             stack.append({'params': params, 'mean_reward': mean_over_last_100})
 

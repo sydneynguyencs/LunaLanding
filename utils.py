@@ -25,3 +25,4 @@ def get_paths(root: str, algo: str, params: dict) -> (str, str, str):
     os.makedirs(video_path, exist_ok=True)
 
     return model_path, result_path, video_path
+
