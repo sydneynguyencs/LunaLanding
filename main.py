@@ -46,10 +46,6 @@ def main():
     env = gym.make(
         "LunarLander-v2",
         continuous=args.continuous,
-        gravity=-10.0,
-        enable_wind=False,
-        wind_power=15.0,
-        turbulence_power=1.5,
         render_mode=args.render_mode
     )
     np.random.seed(42)
@@ -114,13 +110,31 @@ def main():
         best_file.close()
 
     elif args.algorithm == "a2c":
-        params_dict = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 5e-4,
-                       'critic_learning_rate': 1e-4, 'n': 20}
-        args.model_save_path, args.result_save_path, args.video_save_path = get_paths(root=args.save_path,
-                                                                                      algo=args.algorithm,
-                                                                                      params=params_dict)
-        loss, mean_over_last_100 = a2c.train_a2c(args, env=env, params=params_dict)
-        
+
+        params__2 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001, 'memory': 1000000}
+
+        params__1 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 3e-4, 'memory': 1000000}
+
+        param_list = [params__1, params__2]
+
+        # execute on each parameter combination
+        stack = []
+        for params in param_list:
+            args.model_save_path, args.result_save_path, args.video_save_path = get_paths(root=args.save_path,
+                                                                                          algo=args.algorithm,
+                                                                                          params=params)
+
+            # add recording wrapper
+            env = add_recording(env=env, save_path=args.video_save_path)
+            loss, mean_over_last_100 = a2c.train_a2c(args, env=env, params=params)
+            stack.append({'params': params, 'mean_reward': mean_over_last_100})
+
+        stack = sorted(stack, key=lambda d: d['mean_reward'])
+        best_algo = stack.pop()
+        best_file = open(args.save_path + "/" + args.algorithm + "/best_algo.txt", "a+")
+        best_file.write(f"Params: {best_algo['params']}, Score: {best_algo['mean_reward']} \n")
+        best_file.flush()
+        best_file.close()
 
     else:
         print("No such algorithm.")
