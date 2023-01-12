@@ -60,13 +60,20 @@ def main():
     # Apply algo
     if args.algorithm == "dqn":
         # define parameter grid to try out on algorithm
-        params_dict = {'epsilon': [1.0, 0.5], 'gamma': [.99, .66], 'learning_rate': [0.001],
-                       'memory': [1000000, 500000]}
-        param_grid = ParameterGrid(params_dict)
+        params__1 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001,
+                     'memory': 1000000}
+        params__2 = {'epsilon': 0.5, 'gamma': .99, 'learning_rate': 0.001,
+                     'memory': 1000000}
+        params__3 = {'epsilon': 1.0, 'gamma': .66, 'learning_rate': 0.001,
+                     'memory': 1000000}
+        params__4 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001,
+                     'memory': 500000}
+
+        param_list = [params__1, params__2, params__3, params__4]
 
         # execute on each parameter combination
         stack = []
-        for params in param_grid:
+        for params in param_list:
             args.model_save_path, args.result_save_path, args.video_save_path = get_paths(root=args.save_path,
                                                                                           algo=args.algorithm,
                                                                                           params=params)
@@ -85,13 +92,20 @@ def main():
 
     elif args.algorithm == "ddqn":
         # define parameter grid to try out on algorithm
-        params_dict = {'epsilon': [1.0, 0.5], 'gamma': [.99, .66], 'learning_rate': [0.001],
-                       'memory': [1000000, 500000]}
-        param_grid = ParameterGrid(params_dict)
+        params__1 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001,
+                     'memory': 1000000}
+        params__2 = {'epsilon': 0.5, 'gamma': .99, 'learning_rate': 0.001,
+                     'memory': 1000000}
+        params__3 = {'epsilon': 1.0, 'gamma': .66, 'learning_rate': 0.001,
+                     'memory': 1000000}
+        params__4 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001,
+                     'memory': 500000}
+
+        param_list = [params__1, params__2, params__3, params__4]
 
         # execute on each parameter combination
         stack = []
-        for params in param_grid:
+        for params in param_list:
             args.model_save_path, args.result_save_path, args.video_save_path = get_paths(root=args.save_path,
                                                                                           algo=args.algorithm,
                                                                                           params=params)

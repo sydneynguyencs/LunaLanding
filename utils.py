@@ -4,9 +4,9 @@ import gymnasium as gym
 from gymnasium import Env
 
 
-def add_recording(env: Env, save_path: str, n_episodes: int) -> Env:
+def add_recording(env: Env, save_path: str) -> Env:
     env = gym.wrappers.RecordVideo(env, save_path,
-                                   episode_trigger=lambda x: x == 100 or x == n_episodes)
+                                   episode_trigger=lambda x: x % 50 == 0)
     return env
 
 
