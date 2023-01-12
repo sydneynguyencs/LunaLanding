@@ -173,7 +173,7 @@ def train_a2c(args, env: Env, params: dict) -> (list, int):
         print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
 
         # Checkpoint for models
-        if e % 1 == 0:
+        if e % 50 == 0:
             agent.model.save(args.model_save_path + "/model%09d" % e + '.h5')
             print(f"Saved model at episode {e}.")
             agent.critic_model.save(agent.critic_model_save_path + "/model%09d" % e + '.h5')

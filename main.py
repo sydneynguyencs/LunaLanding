@@ -15,7 +15,7 @@ warnings.simplefilter("ignore")
 ## Parse arguments
 ## ===== ===== ===== ===== ===== ===== ===== =====
 
-parser = argparse.ArgumentParser(description="LunaLanding")
+parser = argparse.ArgumentParser(description="LunarLanding")
 
 parser.add_argument("--continuous", type=bool, default=False, help="Continuous Environment")
 parser.add_argument(
