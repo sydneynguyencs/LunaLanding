@@ -32,7 +32,7 @@ def get_paths(root: str, algo: str, params: dict) -> (str, str, str):
 
 def params_to_string(params: dict) -> str:
     return 'epsilon' + str(params['epsilon']) + '-' + 'gamma' + str(params['gamma']) + '-' + 'learning_rate' \
-        + str(params['learning_rate']) + '-' + 'memory' + str(params['memory'])
+        + str(params['learning_rate'])
 
 
 def read_scores(path: str) -> pd.DataFrame:
