@@ -41,7 +41,7 @@ class DQN:
         modelfiles.sort()
         if len(modelfiles) >= 1:
             model = tf.keras.models.load_model(modelfiles[-1])
-            self.iteration = int(modelfiles[-1].split("/")[-1].replace(".h5", "").replace("model", "")) + 1
+            self.iteration = int(modelfiles[-1].split("/")[-1].replace(".h5", "").replace("model", ""))
             print(f"Model loaded from previous state at episode {self.iteration}.")
         return model
 
@@ -121,13 +121,14 @@ def train_dqn(args, env: Env, params: dict) -> (list, int):
         # Average score of last 100 episode
         is_solved = np.mean(_loss[-100:])
         if is_solved > 200:
+            agent.model.save(args.model_save_path + "/model%09d" % e + '.h5')
             print('\n Task Completed! \n')
             break
         print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
 
         # Checkpoint for models
-        if (e + 1) % 50 == 0:
+        if e % 50 == 0:
             agent.model.save(args.model_save_path + "/model%09d" % e + '.h5')
-            print(f"Saved model at episode {e + 1}.")
+            print(f"Saved model at episode {e}.")
 
     return _loss, is_solved
