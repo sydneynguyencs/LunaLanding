@@ -168,6 +168,7 @@ def train_a2c(args, env: Env, params: dict) -> (list, int):
         is_solved = np.mean(_loss[-100:])
         if is_solved > 200:
             agent.model.save(args.model_save_path + "/model%09d" % e + '.h5')
+            agent.critic_model.save(agent.critic_model_save_path + "/model%09d" % e + '.h5')
             print('\n Task Completed! \n')
             break
         print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
