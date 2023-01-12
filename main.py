@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import warnings
 import dqn
 import ddqn
+import a2c
 from utils import add_recording, get_paths
 import numpy as np
 from sklearn.model_selection import ParameterGrid
@@ -30,7 +31,7 @@ parser.add_argument(
     "--render_mode", type=str, default="rgb_array", help="Render mode"
 )
 parser.add_argument(
-    "--algorithm", type=str, default="dqn", help="Algorithm"
+    "--algorithm", type=str, default="a2c", help="Algorithm"
 )
 args = parser.parse_args()
 
@@ -109,7 +110,13 @@ def main():
         best_file.close()
 
     elif args.algorithm == "a2c":
-        pass
+        params_dict = {'epsilon': [1.0], 'gamma': [.99], 'learning_rate': [5e-4],
+                       'critic_learning_rate': [1e-4], 'n': [20]}
+        args.model_save_path, args.result_save_path, args.video_save_path = get_paths(root=args.save_path,
+                                                                                          algo=args.algorithm,
+                                                                                          params=params_dict)
+        loss, mean_over_last_100 = a2c.train_a2c(args, env=env, params=params_dict)
+        
 
     else:
         print("No such algorithm.")
