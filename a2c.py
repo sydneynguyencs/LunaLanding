@@ -69,7 +69,7 @@ def load_model(args, env):
     if len(modelfiles) >= 1:
         model = torch.load(modelfiles[-1])
         iteration = int(modelfiles[-1].split("/")[-1].replace(".h5", "").replace("model", ""))
-        print(f"Model loaded from previous state at episode {self.iteration}.")
+        print(f"Model loaded from previous state at episode {iteration}.")
     return model, iteration
 
 def train_a2c(args, env, params: dict) -> (list, int):
