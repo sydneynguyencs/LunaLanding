@@ -11,8 +11,10 @@ hidden_size = 256
 
 
 """ class ActorCritic(nn.Module):
-    def __init__(self, num_inputs, num_actions, hidden_size, learning_rate=3e-4):
+    def __init__(self, env, hidden_size):
         super(ActorCritic, self).__init__()
+        num_inputs = env.observation_space.shape[0]
+        num_actions = env.action_space.n
 
         self.num_actions = num_actions
         self.critic_linear1 = nn.Linear(num_inputs, hidden_size)
@@ -105,11 +107,10 @@ def train_a2c(args, env, params: dict) -> (list, int):
             score = np.sum(rewards)
             _loss.append(score)
             
-            if done: # or i == max_steps-1:
+            if done or i == max_steps-1:
                 Qval, _ = agent.forward(next_state)
                 Qval = Qval.detach().numpy()[0,0]
                 all_lengths.append(i)   
-                print("episode: {}/{}, score: {}".format(e + 1, args.n_episodes, score))    
                 break
 
         # compute Q values
@@ -132,6 +133,7 @@ def train_a2c(args, env, params: dict) -> (list, int):
         ac_loss.backward()
         ac_optimizer.step()
 
+        # Write scores into file
         scorefile = open(args.result_save_path + "/scores.txt", "a+")
         scorefile.write(f"Episode: {e}, Score: {score} \n")
         scorefile.flush()
@@ -139,20 +141,22 @@ def train_a2c(args, env, params: dict) -> (list, int):
 
         # Average score of last 100 episode
         is_solved = np.mean(_loss[-100:])
-        if is_solved > 200:
-            torch.save(agent, args.model_save_path + "/model%09d" % e + '.h5')
-            # agent.save(args.model_save_path + "/model%09d" % e + '.h5')
-            print(f"Saved model at episode {e}.")
-
-            print('\n Task Completed! \n')
-            break
-        print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
+        
+        # Log every 20 episodes
+        if e % 20 == 0:
+            print("episode: {}/{}, score: {}".format(e + 1, args.n_episodes, score))   
+            print("Average over last 100 episode: {0:.2f} \n".format(is_solved)) 
 
         # Checkpoint for models
-        if e % 50 == 0:
+        if e % 50 == 0 or e == args.n_episodes - 1:
             torch.save(agent, args.model_save_path + "/model%09d" % e + '.h5')
             print(f"Saved model at episode {e}.")
             
+        if is_solved > 200:
+            torch.save(agent, args.model_save_path + "/model%09d" % e + '.h5')
+            print(f"Saved model at episode {e}.")
+            print('\n Task Completed! \n')
+            break
 
     return _loss, is_solved
 

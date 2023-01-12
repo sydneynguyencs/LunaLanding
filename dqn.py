@@ -126,6 +126,7 @@ def train_dqn(args, env: Env, params: dict) -> (list, int):
                 break
         _loss.append(score)
 
+        # Write scores into file
         scorefile = open(args.result_save_path + "/scores.txt", "a+")
         scorefile.write(f"Episode: {e}, Score: {score} \n")
         scorefile.flush()
@@ -133,15 +134,21 @@ def train_dqn(args, env: Env, params: dict) -> (list, int):
 
         # Average score of last 100 episode
         is_solved = np.mean(_loss[-100:])
-        if is_solved > 200:
-            agent.model.save(args.model_save_path + "/model%09d" % e + '.h5')
-            print('\n Task Completed! \n')
-            break
-        print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
+
+        # Log every 20 episodes
+        if e % 20 == 0:
+            print("episode: {}/{}, score: {}".format(e + 1, args.n_episodes, score))   
+            print("Average over last 100 episode: {0:.2f} \n".format(is_solved)) 
 
         # Checkpoint for models
-        if e % 50 == 0:
+        if e % 50 == 0 or e == args.n_episodes - 1:
             agent.model.save(args.model_save_path + "/model%09d" % e + '.h5')
             print(f"Saved model at episode {e}.")
+
+        if is_solved > 200:
+            agent.model.save(args.model_save_path + "/model%09d" % e + '.h5')
+            print(f"Saved model at episode {e}.")
+            print('\n Task Completed! \n')
+            break
 
     return _loss, is_solved
