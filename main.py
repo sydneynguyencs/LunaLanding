@@ -57,16 +57,11 @@ def main():
     # Apply algo
     if args.algorithm == "dqn":
         # define parameter grid to try out on algorithm
-        params__1 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001,
-                     'memory': 2000}
-        params__2 = {'epsilon': 0.5, 'gamma': .99, 'learning_rate': 0.001,
-                     'memory': 2000}
-        params__3 = {'epsilon': 1.0, 'gamma': .66, 'learning_rate': 0.001,
-                     'memory': 2000}
-        params__4 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001,
-                     'memory': 1000}
+        # params__1 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001}
+        params__2 = {'epsilon': 0.5, 'gamma': .99, 'learning_rate': 0.001}
+        # params__3 = {'epsilon': 1.0, 'gamma': .66, 'learning_rate': 0.001}
 
-        param_list = [params__1, params__2, params__3, params__4]
+        param_list = [params__2]
 
         # execute on each parameter combination
         stack = []
@@ -89,16 +84,11 @@ def main():
 
     elif args.algorithm == "ddqn":
         # define parameter grid to try out on algorithm
-        params__1 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001,
-                     'memory': 2000}
-        params__2 = {'epsilon': 0.5, 'gamma': .99, 'learning_rate': 0.001,
-                     'memory': 2000}
-        params__3 = {'epsilon': 1.0, 'gamma': .66, 'learning_rate': 0.001,
-                     'memory': 2000}
-        params__4 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001,
-                     'memory': 1000}
+        params__1 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001}
+        params__2 = {'epsilon': 0.5, 'gamma': .99, 'learning_rate': 0.001}
+        params__3 = {'epsilon': 1.0, 'gamma': .66, 'learning_rate': 0.001}
 
-        param_list = [params__1, params__2, params__3, params__4]
+        param_list = [params__1, params__2, params__3]
 
         # execute on each parameter combination
         stack = []
@@ -120,6 +110,7 @@ def main():
         best_file.close()
 
     elif args.algorithm == "a2c":
+
         params__2 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001, 'memory': 1000000}
 
         params__1 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 3e-4, 'memory': 1000000}
