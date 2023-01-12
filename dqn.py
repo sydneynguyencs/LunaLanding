@@ -25,11 +25,11 @@ class DQN:
         self.state_space = state_space
         self.epsilon = params['epsilon']
         self.gamma = params['gamma']
-        self.batch_size = 8
+        self.batch_size = 32
         self.epsilon_min = .01
         self.learning_rate = params['learning_rate']
         self.epsilon_decay = .996
-        self.memory = deque(maxlen=2000)
+        self.memory = deque(maxlen=20000)
         self.iteration = 0
         self.model_save_path = args.model_save_path
         self.result_save_path = args.result_save_path
