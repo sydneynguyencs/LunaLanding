@@ -20,7 +20,7 @@ STATE_DIM = 8
 class A2C(Reinforce):
     def __init__(self, args, params: dict):        
         self.iteration = 0
-        self.gamme = params['gamma']
+        self.gamma = params['gamma']
         self.n = params['n']
         self.learning_rate = params['learning_rate']
         self.critic_learning_rate = params['critic_learning_rate']
@@ -58,8 +58,7 @@ class A2C(Reinforce):
         model.add(Dense(2, kernel_initializer='uniform', activation='softmax'))
         
         actor_optimizer = keras.optimizers.Adam(lr=self.learning_rate)
-        self.model.compile(loss=get_actor_loss(), optimizer=actor_optimizer)
-        model = self.model
+        model.compile(loss=keras.losses.mean_squared_error, optimizer=actor_optimizer) # TODO
         return model
     
     def build_critic_model(self) -> Sequential:
@@ -69,10 +68,15 @@ class A2C(Reinforce):
         critic_model.add(Dense(64, kernel_initializer='VarianceScaling', activation='relu', use_bias=True))
         critic_model.add(Dense(32, kernel_initializer='VarianceScaling', activation='relu', use_bias=True))
         critic_model.add(Dense(1, kernel_initializer='VarianceScaling', use_bias=True))
-        critic_optimizer = keras.optimizers.Adam(lr=critic_learning_rate)
-        self.critic_model.compile(loss=keras.losses.mean_squared_error, optimizer=critic_optimizer)
-        model = self.critic_model
-        return model
+        critic_optimizer = keras.optimizers.Adam(lr=self.critic_learning_rate)
+        critic_model.compile(loss=keras.losses.mean_squared_error, optimizer=critic_optimizer)
+        return critic_model
+
+    def get_actor_loss(self):
+        def custom_actor_loss(y_true, y_predict):
+            y_predict
+            return -K.sum(y_true * K.log(y_predict), axis=-1)
+        return custom_actor_loss
 
     def multinomial_sample(self, policy):
         num_classes = policy.shape[0]
@@ -89,15 +93,18 @@ class A2C(Reinforce):
         states = []
         actions = []
         rewards = []
-        state = env.reset()
+        state, _ = env.reset(seed=42)
         done = False
         total_rewards = 0
         while not done:
             if render:
                 env.render()
-            policy = self.model.predict(state.reshape((1, STATE_DIM))).reshape(NUM_ACTIONS)
+            policy = self.model.predict(state.reshape((1, STATE_DIM)))[0]            
             action = self.multinomial_sample(policy)
-            observation, reward, done, _ = env.step(action)
+            observation, reward, terminated, truncated, _ = env.step(action)
+            done = False
+            if terminated or truncated:
+                done = True
             total_rewards += reward
             states.append(state)
             actions.append(action)
@@ -105,7 +112,7 @@ class A2C(Reinforce):
             state = observation
 
         return states, actions, rewards
-
+        
     def train_step(self, env, update_actor=False):
         # Trains the model on a single episode using A2C.
         # TODO: Implement this method. It may be helpful to call the class
@@ -127,18 +134,16 @@ class A2C(Reinforce):
                 multi *= self.gamma
             v = 0 if (i + self.n >= R.shape[0]) else V[i+self.n, 0]
             R[i, 0] += multi * v
-        '''
-        multi = 1
-        actor_R = np.copy(R)
-        for i in range(R.shape[0]):
-            actor_R[i, 0] *= multi
-            multi *= self.gamma
-        '''
+
         # train actor model
         actor_loss = 0
         if update_actor:
-            y_true = keras.utils.to_categorical(action, num_classes=NUM_ACTIONS)
+            y_true = keras.utils.to_categorical(action, num_classes=STATE_DIM)
             y_true = (R - V) * y_true
+            print(state.shape)
+            # print(state)
+            print(y_true.shape)
+            # print(y_true)
             actor_loss = self.model.train_on_batch(state, y_true)
         # train critic model
         critic_loss = self.critic_model.train_on_batch(state, R)
@@ -147,20 +152,20 @@ class A2C(Reinforce):
 
 
 def train_a2c(args, env: Env, params: dict) -> (list, int):
-    score = []
+    _loss = []
     is_solved = 0
 
     agent = A2C(args, params=params)
     for e in range(agent.iteration, args.n_episodes):
-        actor_loss, critic_loss, score = agent.train_step(env, update_actor=True)
+        actor_loss, critic_loss, score = agent.train_step(env, update_actor=False)
 
         scorefile = open(args.result_save_path + "/scores.txt", "a+")
         scorefile.write(f"Episode: {e}, Score: {score} \n")
         scorefile.flush()
         scorefile.close()
-
+        _loss.append(score)
         # Average score of last 100 episode
-        is_solved = np.mean(score[-100:])
+        is_solved = np.mean(_loss[-100:])
         if is_solved > 200:
             agent.model.save(args.model_save_path + "/model%09d" % e + '.h5')
             print('\n Task Completed! \n')
@@ -174,4 +179,4 @@ def train_a2c(args, env: Env, params: dict) -> (list, int):
             agent.critic_model.save(agent.critic_model_save_path + "/model%09d" % e + '.h5')
             print(f"Saved critic model at episode {e}.")
 
-    return score, is_solved
+    return _loss, is_solved

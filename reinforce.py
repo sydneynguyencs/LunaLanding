@@ -49,7 +49,7 @@ class Reinforce(object):
                 G[t][0] += multi * rewards[i]
                 multi *= gamma
             t -=1
-        y_true = keras.utils.to_categorical(action_input, num_classes=NUM_ACTIONS)
+        y_true = keras.utils.to_categorical(action_input, num_classes=STATE_DIM)
         y_true = G * y_true
         loss = self.model.train_on_batch(state_input, y_true / 100.0)
 

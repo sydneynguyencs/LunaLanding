@@ -124,8 +124,8 @@ def main():
         best_file.close()
 
     elif args.algorithm == "a2c":
-        params_dict = {'epsilon': [1.0], 'gamma': [.99], 'learning_rate': [5e-4],
-                       'critic_learning_rate': [1e-4], 'n': [20]}
+        params_dict = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 5e-4,
+                       'critic_learning_rate': 1e-4, 'n': 20, 'memory': 1000000}
         args.model_save_path, args.result_save_path, args.video_save_path = get_paths(root=args.save_path,
                                                                                           algo=args.algorithm,
                                                                                           params=params_dict)
