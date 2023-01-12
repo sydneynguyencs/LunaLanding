@@ -8,6 +8,7 @@ from keras.layers import Dense
 from keras.optimizers import Adam
 from keras.activations import relu, linear
 import tensorflow as tf
+from tensorflow.python.keras.layers import Flatten, Activation
 
 
 # --------------------------------------------------------------
@@ -24,7 +25,7 @@ class DQN:
         self.state_space = state_space
         self.epsilon = params['epsilon']
         self.gamma = params['gamma']
-        self.batch_size = 64
+        self.batch_size = 32
         self.epsilon_min = .01
         self.learning_rate = params['learning_rate']
         self.epsilon_decay = .996
@@ -51,6 +52,18 @@ class DQN:
         model.add(Dense(120, activation=relu))
         model.add(Dense(self.action_space, activation=linear))
         model.compile(loss='mse', optimizer=Adam(learning_rate=self.learning_rate))
+
+        # model = Sequential()
+        # model.add(Flatten(input_dim=self.state_space))  # Input layer
+        # model.add(Dense(512))  # Layer 1
+        # model.add(Activation('relu'))
+        # model.add(Dense(256))  # Layer 2
+        # model.add(Activation('relu'))
+        # model.add(Dense(128))  # Layer 3
+        # model.add(Activation('relu'))
+        # model.add(Dense(self.action_space))  # Output Layer
+        # model.add(Activation('linear'))
+
         return model
 
     def remember(self, state, action, reward, next_state, done) -> None:

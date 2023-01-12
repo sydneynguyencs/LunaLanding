@@ -61,13 +61,13 @@ def main():
     if args.algorithm == "dqn":
         # define parameter grid to try out on algorithm
         params__1 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001,
-                     'memory': 1000000}
+                     'memory': 2000}
         params__2 = {'epsilon': 0.5, 'gamma': .99, 'learning_rate': 0.001,
-                     'memory': 1000000}
+                     'memory': 2000}
         params__3 = {'epsilon': 1.0, 'gamma': .66, 'learning_rate': 0.001,
-                     'memory': 1000000}
+                     'memory': 2000}
         params__4 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001,
-                     'memory': 500000}
+                     'memory': 1000}
 
         param_list = [params__1, params__2, params__3, params__4]
 
@@ -93,13 +93,13 @@ def main():
     elif args.algorithm == "ddqn":
         # define parameter grid to try out on algorithm
         params__1 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001,
-                     'memory': 1000000}
+                     'memory': 2000}
         params__2 = {'epsilon': 0.5, 'gamma': .99, 'learning_rate': 0.001,
-                     'memory': 1000000}
+                     'memory': 2000}
         params__3 = {'epsilon': 1.0, 'gamma': .66, 'learning_rate': 0.001,
-                     'memory': 1000000}
+                     'memory': 2000}
         params__4 = {'epsilon': 1.0, 'gamma': .99, 'learning_rate': 0.001,
-                     'memory': 500000}
+                     'memory': 1000}
 
         param_list = [params__1, params__2, params__3, params__4]
 

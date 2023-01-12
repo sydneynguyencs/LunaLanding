@@ -24,7 +24,7 @@ class DDQN:
         self.state_space = state_space
         self.epsilon = params['epsilon']
         self.gamma = params['gamma']
-        self.batch_size = 64
+        self.batch_size = 32
         self.epsilon_min = .01
         self.learning_rate = params['learning_rate']
         self.epsilon_decay = .996

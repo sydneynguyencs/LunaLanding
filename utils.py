@@ -1,7 +1,11 @@
 import os
 import uuid
 import gymnasium as gym
+import numpy as np
 from gymnasium import Env
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy.interpolate import make_interp_spline
 
 
 def add_recording(env: Env, save_path: str) -> Env:
@@ -15,8 +19,7 @@ def generate_run_id() -> str:
 
 
 def get_paths(root: str, algo: str, params: dict) -> (str, str, str):
-    params_string = 'epsilon' + str(params['epsilon']) + '-' + 'gamma' + str(params['gamma']) + '-' + 'learning_rate' \
-                    + str(params['learning_rate']) + '-' + 'memory' + str(params['memory'])
+    params_string = params_to_string(params)
     model_path = root + "/" + algo + "/" + params_string + "/model"
     result_path = root + "/" + algo + "/" + params_string + "/result"
     video_path = root + "/" + algo + "/" + params_string + "/video"
@@ -26,3 +29,26 @@ def get_paths(root: str, algo: str, params: dict) -> (str, str, str):
 
     return model_path, result_path, video_path
 
+
+def params_to_string(params: dict) -> str:
+    return 'epsilon' + str(params['epsilon']) + '-' + 'gamma' + str(params['gamma']) + '-' + 'learning_rate' \
+        + str(params['learning_rate']) + '-' + 'memory' + str(params['memory'])
+
+
+def read_scores(path: str) -> pd.DataFrame:
+    _scores = pd.read_csv(path, sep=',', names=['Episode', 'Score'], usecols=['Score'])
+    _scores = _scores['Score'].str.replace('Score:', '').astype(float)
+    _scores = pd.DataFrame(_scores, columns=['Score'])
+    return _scores
+
+
+def plot_scores(_scores: pd.DataFrame, algo_name: str, params: str) -> None:
+    _scores.plot()
+    x_y_spline = make_interp_spline(_scores.index, _scores['Score'])
+    x_ = np.linspace(_scores.index.min(), _scores.index.max(), 20)
+    y_ = x_y_spline(x_)
+    plt.plot(x_, y_)
+    plt.title(algo_name.upper() + "\n" + params)
+    plt.xlabel("Episode")
+    plt.ylabel("Reward")
+    plt.show()
