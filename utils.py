@@ -53,3 +53,12 @@ def plot_scores(_scores: pd.DataFrame, algo_name: str, params: str, save_path: s
     plt.ylabel("Reward")
     plt.savefig(save_path)
     plt.show()
+
+
+def calculate_mean(_scores: pd.DataFrame, mean_path: str) -> None:
+    mean = _scores['Score'][-100:].mean()
+    # Write scores into file
+    mean_file = open(mean_path + "/average.txt", "a+")
+    mean_file.write(f"Average over last 100 episodes: {mean} \n")
+    mean_file.flush()
+    mean_file.close()
