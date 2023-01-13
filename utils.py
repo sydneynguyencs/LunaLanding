@@ -45,7 +45,7 @@ def read_scores(path: str) -> pd.DataFrame:
 def plot_scores(_scores: pd.DataFrame, algo_name: str, params: str, save_path: str) -> None:
     _scores.plot()
     x_y_spline = make_interp_spline(_scores.index, _scores['Score'])
-    x_ = np.linspace(_scores.index.min(), _scores.index.max(), 20)
+    x_ = np.linspace(_scores.index.min(), _scores.index.max(), 10)
     y_ = x_y_spline(x_)
     plt.plot(x_, y_)
     plt.title(algo_name.upper() + "\n" + params)
