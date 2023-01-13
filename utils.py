@@ -43,6 +43,12 @@ def read_scores(path: str) -> pd.DataFrame:
 
 
 def plot_scores(_scores: pd.DataFrame, algo_name: str, params: str, save_path: str) -> None:
+    score_values = _scores.values
+    mean = np.mean(score_values)
+    for i in range(len(score_values)):
+        val = score_values[i]
+        if val < -400 or val > 300:
+            _scores.at[i,'Score'] = mean
     _scores.plot()
     x_y_spline = make_interp_spline(_scores.index, _scores['Score'])
     x_ = np.linspace(_scores.index.min(), _scores.index.max(), 10)
