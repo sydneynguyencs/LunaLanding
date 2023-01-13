@@ -1,183 +1,164 @@
 import sys
-import argparse
-import numpy as np
-import tensorflow as tf
-import keras
-from keras import backend as K
-from keras.models import Sequential
-from keras.layers import Dense
-import time
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from reinforce import Reinforce
-from gymnasium import Env
 import glob
+import torch  
+import gymnasium as gym
+import numpy as np  
+import torch.nn as nn
+import torch.optim as optim
+import torch.nn.functional as F
+from torch.autograd import Variable
+hidden_size = 256
 
-NUM_ACTIONS = 4
-STATE_DIM = 8
 
-class A2C(Reinforce):
-    def __init__(self, args, params: dict):        
-        self.iteration = 0
-        self.gamma = params['gamma']
-        self.n = params['n']
-        self.learning_rate = params['learning_rate']
-        self.critic_learning_rate = params['critic_learning_rate']
-        self.model_save_path = args.model_save_path
-        self.critic_model_save_path = args.model_save_path.replace("model","critic_model")
-        self.result_save_path = args.result_save_path
-        self.video_save_path = args.video_save_path
-        self.model = self.load_model()
-        self.critic_model = self.load_model('critic')
+""" class ActorCritic(nn.Module):
+    def __init__(self, env, hidden_size):
+        super(ActorCritic, self).__init__()
+        num_inputs = env.observation_space.shape[0]
+        num_actions = env.action_space.n
 
+        self.num_actions = num_actions
+        self.critic_linear1 = nn.Linear(num_inputs, hidden_size)
+        self.critic_linear2 = nn.Linear(hidden_size, 1)
+
+        self.actor_linear1 = nn.Linear(num_inputs, hidden_size)
+        self.actor_linear2 = nn.Linear(hidden_size, num_actions)
+    
+    def forward(self, state):
+        state = Variable(torch.from_numpy(state).float().unsqueeze(0))
+        value = F.relu(self.critic_linear1(state))
+        value = self.critic_linear2(value)
         
-    def load_model(self, mode:str='model'):
-        if mode == 'model':
-            model = self.build_model()
-            modelfiles = glob.glob("%s/model0*.h5" % self.model_save_path)
-        if mode == 'critic':
-            model = self.build_critic_model()
-            modelfiles = glob.glob("%s/model0*.h5" % self.critic_model_save_path)
+        policy_dist = F.relu(self.actor_linear1(state))
+        policy_dist = F.softmax(self.actor_linear2(policy_dist), dim=1)
 
-        modelfiles.sort()
-        if len(modelfiles) >= 1:
-            model = tf.keras.models.load_model(modelfiles[-1])
-            self.iteration = int(modelfiles[-1].split("/")[-1].replace(".h5", "").replace("model", ""))
-            print(f"Model loaded from previous state at episode {self.iteration}.")
-        return model
+        return value, policy_dist """
 
-    # TODO: Define any training operations and optimizers here, initialize
-    #       your variables, or alternately compile your model here.
+class ActorCritic(nn.Module):
+    def __init__(self, env, hidden_size):
+        super(ActorCritic, self).__init__()
+        num_inputs = env.observation_space.shape[0]
+        num_actions = env.action_space.n
+        self.num_actions = num_actions
+        self.critic_linear1 = nn.Linear(num_inputs, hidden_size)
+        self.dp1 = nn.Dropout(p=0.5)
+        self.critic_linear2 = nn.Linear(hidden_size, 8)
+        self.critic_linear3 = nn.Linear(8, 1)
+
+        self.actor_linear1 = nn.Linear(num_inputs, hidden_size)
+        self.actor_linear2 = nn.Linear(hidden_size, hidden_size)
+        self.actor_linear3 = nn.Linear(hidden_size, hidden_size)
+        self.actor_linear4 = nn.Linear(hidden_size, num_actions)
     
-    def build_model(self) -> Sequential:
-        model = Sequential()
-        model.add(Dense(16, input_dim=STATE_DIM, kernel_initializer='uniform', activation='relu'))
-        model.add(Dense(16, kernel_initializer='uniform', activation='relu'))
-        model.add(Dense(16, kernel_initializer='uniform', activation='relu'))
-        model.add(Dense(2, kernel_initializer='uniform', activation='softmax'))
-        
-        actor_optimizer = keras.optimizers.Adam(lr=self.learning_rate)
-        model.compile(loss=keras.losses.mean_squared_error, optimizer=actor_optimizer) # TODO
-        return model
-    
-    def build_critic_model(self) -> Sequential:
-        critic_model = Sequential()
-        critic_model.add(Dense(32, input_dim=STATE_DIM, kernel_initializer='VarianceScaling', activation='relu', use_bias=True))
-        critic_model.add(Dense(64, kernel_initializer='VarianceScaling', activation='relu', use_bias=True))
-        critic_model.add(Dense(64, kernel_initializer='VarianceScaling', activation='relu', use_bias=True))
-        critic_model.add(Dense(32, kernel_initializer='VarianceScaling', activation='relu', use_bias=True))
-        critic_model.add(Dense(1, kernel_initializer='VarianceScaling', use_bias=True))
-        critic_optimizer = keras.optimizers.Adam(lr=self.critic_learning_rate)
-        critic_model.compile(loss=keras.losses.mean_squared_error, optimizer=critic_optimizer)
-        return critic_model
+    def forward(self, x):
+        x = Variable(torch.from_numpy(x).float().unsqueeze(0))
+        value = F.relu(self.critic_linear1(x))
+        value = self.dp1(value)
+        value = F.relu(self.critic_linear2(value))
+        value = self.critic_linear3(value)
 
-    def get_actor_loss(self):
-        def custom_actor_loss(y_true, y_predict):
-            y_predict
-            return -K.sum(y_true * K.log(y_predict), axis=-1)
-        return custom_actor_loss
+        policy_dist = F.relu(self.actor_linear1(x))
+        policy_dist = F.relu(self.actor_linear2(policy_dist))
+        policy_dist = F.relu(self.actor_linear3(policy_dist))
+        policy_dist = F.softmax(self.actor_linear4(policy_dist),dim=-1)
 
-    def multinomial_sample(self, policy):
-        num_classes = policy.shape[0]
-        thresholds = np.zeros(num_classes + 1)
-        for i in range(num_classes):
-            thresholds[i+1] = thresholds[i] + policy[i]
-        rand = np.random.uniform()
-        for i in range(num_classes):
-            if rand >= thresholds[i] and rand <= thresholds[i+1]:
-                return i
-        return num_classes - 1
-    
-    def generate_episode(self, env, render=False):
-        states = []
-        actions = []
+        return value, policy_dist
+
+def load_model(args, env):
+    model = ActorCritic(env, hidden_size)
+    modelfiles = glob.glob("%s/model0*.h5" % args.model_save_path)
+    modelfiles.sort()
+    iteration = 0
+    if len(modelfiles) >= 1:
+        model = torch.load(modelfiles[-1])
+        iteration = int(modelfiles[-1].split("/")[-1].replace(".h5", "").replace("model", ""))
+        print(f"Model loaded from previous state at episode {iteration}.")
+    return model, iteration
+
+def train_a2c(args, env, params: dict) -> (list, int):
+    agent, iteration = load_model(args, env)
+    ac_optimizer = optim.Adam(agent.parameters(), lr=params['learning_rate'])
+    _loss = []
+    all_lengths = []
+    entropy_term = 0
+
+    for e in range(iteration, args.n_episodes):
+        score = 0
+        state, _ = env.reset()
+        log_probs = []
+        values = []
         rewards = []
-        state, _ = env.reset(seed=42)
-        done = False
-        total_rewards = 0
-        while not done:
-            if render:
-                env.render()
-            policy = self.model.predict(state.reshape((1, STATE_DIM)))[0]            
-            action = self.multinomial_sample(policy)
-            observation, reward, terminated, truncated, _ = env.step(action)
+        max_steps = 3000
+        for i in range(max_steps):
+            value, policy_dist = agent.forward(state)
+            value = value.detach().numpy()[0,0]
+            dist = policy_dist.detach().numpy() 
+            action = np.random.choice(env.action_space.n, p=np.squeeze(dist))
+            log_prob = torch.log(policy_dist.squeeze(0)[action])
+            entropy = -np.sum(np.mean(dist) * np.log(dist))
+            next_state, reward, terminated, truncated, _ = env.step(action)
             done = False
             if terminated or truncated:
                 done = True
-            total_rewards += reward
-            states.append(state)
-            actions.append(action)
             rewards.append(reward)
-            state = observation
+            values.append(value)
+            log_probs.append(log_prob)
+            entropy_term += entropy
+            state = next_state
+            score = np.sum(rewards)
+            _loss.append(score)
+            
+            if done or i == max_steps-1:
+                Qval, _ = agent.forward(next_state)
+                Qval = Qval.detach().numpy()[0,0]
+                all_lengths.append(i)   
+                break
 
-        return states, actions, rewards
+        # compute Q values
+        Qvals = np.zeros_like(values)
+        for t in reversed(range(len(rewards))):
+            Qval = rewards[t] + params['gamma'] * Qval
+            Qvals[t] = Qval
+  
+        #update actor critic
+        values = torch.FloatTensor(values)
+        Qvals = torch.FloatTensor(Qvals)
+        log_probs = torch.stack(log_probs)
         
-    def train_step(self, env, update_actor=False):
-        # Trains the model on a single episode using A2C.
-        # TODO: Implement this method. It may be helpful to call the class
-        #       method generate_episode() to generate training data.
-        states, actions, rewards = self.generate_episode(env)
-        reward = [0.01 * i for i in rewards]
-        R = np.zeros((len(reward), 1))
-        state = np.zeros((len(reward), STATE_DIM))
-        action = np.zeros(len(reward))
-        V = self.critic_model.predict(state)
-        # print(np.max(V))
-        for i in range(R.shape[0]):
-            multi = 1
-            state[i] = states[i]
-            action[i] = actions[i]
-            for j in range(self.n):
-                r = 0 if (i + j >= R.shape[0]) else reward[i+j]
-                R[i, 0] += multi * r
-                multi *= self.gamma
-            v = 0 if (i + self.n >= R.shape[0]) else V[i+self.n, 0]
-            R[i, 0] += multi * v
+        advantage = Qvals - values
+        actor_loss = (-log_probs * advantage).mean()
+        critic_loss = 0.5 * advantage.pow(2).mean()
+        ac_loss = actor_loss + critic_loss + 0.001 * entropy_term
 
-        # train actor model
-        actor_loss = 0
-        if update_actor:
-            y_true = keras.utils.to_categorical(action, num_classes=STATE_DIM)
-            y_true = (R - V) * y_true
-            print(state.shape)
-            # print(state)
-            print(y_true.shape)
-            # print(y_true)
-            actor_loss = self.model.train_on_batch(state, y_true)
-        # train critic model
-        critic_loss = self.critic_model.train_on_batch(state, R)
-        total_rewards = sum(rewards)
-        return actor_loss, critic_loss, total_rewards
+        ac_optimizer.zero_grad()
+        ac_loss.backward()
+        ac_optimizer.step()
 
-
-def train_a2c(args, env: Env, params: dict) -> (list, int):
-    _loss = []
-    is_solved = 0
-
-    agent = A2C(args, params=params)
-    for e in range(agent.iteration, args.n_episodes):
-        actor_loss, critic_loss, score = agent.train_step(env, update_actor=False)
-
+        # Write scores into file
         scorefile = open(args.result_save_path + "/scores.txt", "a+")
         scorefile.write(f"Episode: {e}, Score: {score} \n")
         scorefile.flush()
         scorefile.close()
-        _loss.append(score)
+
         # Average score of last 100 episode
         is_solved = np.mean(_loss[-100:])
-        if is_solved > 200:
-            agent.model.save(args.model_save_path + "/model%09d" % e + '.h5')
-            agent.critic_model.save(agent.critic_model_save_path + "/model%09d" % e + '.h5')
-            print('\n Task Completed! \n')
-            break
-        print("Average over last 100 episode: {0:.2f} \n".format(is_solved))
+        
+        # Log every 20 episodes
+        if e % 20 == 0:
+            print("episode: {}/{}, score: {}".format(e + 1, args.n_episodes, score))   
+            print("Average over last 100 episode: {0:.2f} \n".format(is_solved)) 
 
         # Checkpoint for models
-        if e % 50 == 0:
-            agent.model.save(args.model_save_path + "/model%09d" % e + '.h5')
+        if e % 50 == 0 or e == args.n_episodes - 1:
+            torch.save(agent, args.model_save_path + "/model%09d" % e + '.h5')
             print(f"Saved model at episode {e}.")
-            agent.critic_model.save(agent.critic_model_save_path + "/model%09d" % e + '.h5')
-            print(f"Saved critic model at episode {e}.")
+            
+        if is_solved > 200:
+            torch.save(agent, args.model_save_path + "/model%09d" % e + '.h5')
+            print(f"Saved model at episode {e}.")
+            print('\n Task Completed! \n')
+            break
 
     return _loss, is_solved
+
+
+
