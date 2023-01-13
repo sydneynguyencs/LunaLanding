@@ -12,7 +12,7 @@ parser.add_argument(
     "--save_path", type=str, default="experiments", help="Path for model and logs"
 )
 parser.add_argument(
-    "--algorithm", type=str, default="dqn", help="Algorithm"
+    "--algorithm", type=str, default="a2c", help="Algorithm"
 )
 args = parser.parse_args()
 

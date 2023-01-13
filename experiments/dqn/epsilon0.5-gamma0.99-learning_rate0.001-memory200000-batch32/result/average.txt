@@ -1,0 +1,1 @@
+Average over last 100 episodes: 200.08471571883882 with episode length 350 with params epsilon0.5-gamma0.99-learning_rate0.001-memory200000-batch32 

@@ -13,7 +13,7 @@ parser.add_argument(
     "--save_path", type=str, default="experiments", help="Path for model and logs"
 )
 parser.add_argument(
-    "--algorithm", type=str, default="ddqn", help="Algorithm"
+    "--algorithm", type=str, default="a2c", help="Algorithm"
 )
 args = parser.parse_args()
 
@@ -25,7 +25,7 @@ def main():
         scores = read_scores(path=scores_path)
         mean_path = args.save_path + "/" + args.algorithm + "/" + directory + "/result"
         os.makedirs(mean_path, exist_ok=True)
-        calculate_mean(_scores=scores, mean_path=mean_path)
+        calculate_mean(_scores=scores, mean_path=mean_path, params=directory)
 
 
 if __name__ == '__main__':

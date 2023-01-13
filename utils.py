@@ -43,6 +43,12 @@ def read_scores(path: str) -> pd.DataFrame:
 
 
 def plot_scores(_scores: pd.DataFrame, algo_name: str, params: str, save_path: str) -> None:
+    score_values = _scores.values
+    mean = np.mean(score_values)
+    for i in range(len(score_values)):
+        val = score_values[i]
+        if val < -500 or val > 450:
+            _scores.drop([i], axis=0, inplace=True)
     _scores.plot()
     x_y_spline = make_interp_spline(_scores.index, _scores['Score'])
     x_ = np.linspace(_scores.index.min(), _scores.index.max(), 10)
@@ -55,10 +61,10 @@ def plot_scores(_scores: pd.DataFrame, algo_name: str, params: str, save_path: s
     plt.show()
 
 
-def calculate_mean(_scores: pd.DataFrame, mean_path: str) -> None:
+def calculate_mean(_scores: pd.DataFrame, mean_path: str, params: str) -> None:
     mean = _scores['Score'][-100:].mean()
     # Write scores into file
-    mean_file = open(mean_path + "/average.txt", "a+")
-    mean_file.write(f"Average over last 100 episodes: {mean} \n")
+    mean_file = open(mean_path + "/average.txt", "w")
+    mean_file.write(f"Average over last 100 episodes: {mean} with episode length {len(_scores)} with params {params} \n")
     mean_file.flush()
     mean_file.close()
