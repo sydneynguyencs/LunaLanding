@@ -52,7 +52,6 @@ def main():
     env.reset(seed=42)
     # print(env.observation_space)
     # print(env.action_space)
-    stack = []
     mean_over_last_100_list = []
     params_list = []
 
