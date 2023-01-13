@@ -44,7 +44,6 @@ def read_scores(path: str) -> pd.DataFrame:
 
 def plot_scores(_scores: pd.DataFrame, algo_name: str, params: str, save_path: str) -> None:
     score_values = _scores.values
-    mean = np.mean(score_values)
     for i in range(len(score_values)):
         val = score_values[i]
         if val < -500 or val > 450:
